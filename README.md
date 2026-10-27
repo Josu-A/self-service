@@ -5,7 +5,7 @@ cook sharing a `SelfService` monitor). Uses a Swing GUI by default.
 
 ## Requirements
 
-- JDK 8+
+- JDK 11+
 - A graphical display (the GUI is Swing)
 
 ## Build
