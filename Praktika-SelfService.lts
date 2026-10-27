@@ -1,0 +1,86 @@
+/*
+    Praktika - Self-Service
+
+    Self-Service jatetxe bateko bezeroek hainbat aldiz jateko aukera dute, baina
+    jatetxean egon daitezkeen bezero kopurua mugatuta dago. Bezeroa jatetxera
+    sartzen denean, zenbat aldiz jango duen erabakitzen du, eta, jan nahi duen
+    bakoitzean, janaria hartuko du, eseri eta azkenik jan. Guztiz jan duenean,
+    jatetxetik irtengo da.
+
+    Bezeroak ez diren beste bi rol daude. Batetik, jatetxeko sukaldariak eskaerak
+    jasoko ditu, eskaera hori dagokion jana sukaldatu eta aterako du.
+
+    Bestetik, langileak ere badaude. Hauek, zenbat plater dauden begiratzerakoan
+    eta ikusten badute batzuk falta direla, sukaldariari eskaera bat egingo dio.
+    Sukaldariak platerak prest daudela esaterakoan, langileak hartu eta bezeroengana
+    eramango du. Platerik ez bada falta, itxaron egingo dute plateren bat falta arte.
+
+    Sukaldariak soilik eskaera bat aldi berean kudeatu dezake, baina hainbat plater
+    utzi ditzake prest hartzeko.
+
+    LTSAn jatetxeak ez du kudeatzen langileak hartutako prest dagoen platera berarena
+    den, eta kontagailu huts batekin kudeatuko da. Java-n, ordea, listen bidez
+    langile bakoitzaren eskaeraren egoera kudeatu beharko da.
+
+    Kopuruak: (LTSA / Java)
+        - jatetxekoBezeroMaximoa (2 / 4)
+        - bezeroKopurua (3 / 6)
+        - langileKopurua (2 / 3)
+        - platerKopurua (3 / 6)
+        - hartzekoPlaterMaximoa (2 / 3)
+
+    Egilea: Josu Aguinaga
+    Data: 2025-05-18
+*/
+
+const BK = 3 // Bezero kopurua
+range BR = 0..BK-1 // Bezeroen indizeak
+
+const SK = 2 // Self-Service-ean egon daitezkeen bezero kopuru maximoa
+range SR = 0..SK // Self-Service-ean egon daitezkeen bezero kopurua
+
+const LK = 2 // Langile kopurua
+range LR = 0..LK-1 // Langileen indizeak
+
+const JK = 2 // Bezeroak hartu dezakeen janari kopuru maximoa
+range JR = 1..JK // Bezeroak zenbat janari hartu dezakeen
+
+const PK = 3 // Self-Service-ean dauden jan plater kopurua
+range PR = 0..PK // Self-Service-ean egon daitezkeen plater kopurua
+
+range SO = 0..1 // Sukaldaria okupatuta dagoen adierazten duen boolearra
+range ER = 0..LK // Sukaldariak prest izan ditzazkeen eskaera kopurua
+
+// k: bezeroari gelditzen zaizkion janaldi kopurua
+BEZEROA = (sartu -> random[r:JR] -> BEZEROJAN[r]),
+BEZEROJAN[k:JR] = (
+    hartu -> eseri -> jan -> if (k == 1)
+    then (irten -> BEZEROA)
+    else BEZEROJAN[k-1]
+).
+
+LANGILEA = (
+    begiratu[pk:PR] -> if (pk < PK)
+    then (random[r:1..(PK-pk)] -> eskatu -> ekarri[r] -> LANGILEA)
+    else (itxaron -> LANGILEA)
+).
+
+SUKALDARIA = (eskaeraEntzun -> sukaldatu -> janariaAtera -> SUKALDARIA).
+
+// b: momentuan self-service-ean dauden bezero kopurua
+// p: momentuan self-service-ean dauden plater kopurua
+// so: sukaldaria okupatuta dagoen
+// ek: momentuan sukaldariak prest dituen eskari kopurua
+SELF_SERVICE = SELF_SERVICE[0][PK][0][0],
+SELF_SERVICE[b:SR][p:PR][so:SO][ek:ER] = (
+    when (b < SK) b[BR].sartu -> SELF_SERVICE[b+1][p][so][ek] |
+    b[BR].irten -> SELF_SERVICE[b-1][p][so][ek] |
+    when (p > 0) b[BR].hartu -> SELF_SERVICE[b][p-1][so][ek] |
+    l[LR].begiratu[p] -> SELF_SERVICE[b][p][so][ek] |
+    when (p < PK && ek > 0) l[LR].ekarri[k:1..(PK-p)] -> SELF_SERVICE[b][p+k][so][ek-1] |
+    when (so == 0) l[LR].eskatu -> SELF_SERVICE[b][p][1][ek] |
+    when (so == 1) s.eskaeraEntzun -> SELF_SERVICE[b][p][so][ek] |
+    s.janariaAtera -> SELF_SERVICE[b][p][0][ek+1]
+).
+
+|| SELF_SERVICE_SISTEMA = (b[BR]:BEZEROA || l[LR]:LANGILEA || s:SUKALDARIA || SELF_SERVICE).
